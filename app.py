@@ -79,9 +79,13 @@ def index():
         initiative_likes[initiative_id] = likes
         initiative_dislikes[initiative_id] = dislikes
 
+    # Получаем общее количество инициатив для пагинации
+    cur.execute("SELECT COUNT(*) FROM initiative")
+    total_initiatives = cur.fetchone()[0]
+
     cur.close()
     conn.close()
-    return render_template('index.html', initiatives=initiatives, initiative_likes=initiative_likes, initiative_dislikes=initiative_dislikes)
+    return render_template('index.html', initiatives=initiatives, initiative_likes=initiative_likes, initiative_dislikes=initiative_dislikes, total_initiatives=total_initiatives)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -89,7 +93,6 @@ def register():
         username = request.form['username']
         password = request.form['password']
 
-        # Не допускаем регистрацию пользователя с логином admin
         if username == "admin":
             flash('Этот логин недоступен!', 'error')
             return redirect(url_for('register'))
@@ -193,7 +196,7 @@ def vote():
 @app.route('/admin', methods=['GET', 'POST'])
 @login_required
 def admin():
-    if session['user_id'] != 'admin':  # Ограничиваем доступ только для админа
+    if session['user_id'] != 'admin':
         flash('У вас нет прав доступа к этому разделу!', 'error')
         return redirect(url_for('index'))
 
@@ -210,7 +213,7 @@ def admin():
 @app.route('/admin/delete_user/<int:user_id>')
 @login_required
 def delete_user(user_id):
-    if session['user_id'] != 'admin':  # Ограничиваем доступ только для админа
+    if session['user_id'] != 'admin':
         flash('У вас нет прав доступа к этому разделу!', 'error')
         return redirect(url_for('index'))
 
@@ -225,7 +228,7 @@ def delete_user(user_id):
 @app.route('/admin/delete_initiative/<int:initiative_id>')
 @login_required
 def delete_admin_initiative(initiative_id):
-    if session['user_id'] != 'admin':  # Ограничиваем доступ только для админа
+    if session['user_id'] != 'admin':
         flash('У вас нет прав доступа к этому разделу!', 'error')
         return redirect(url_for('index'))
 
@@ -237,8 +240,59 @@ def delete_admin_initiative(initiative_id):
     conn.close()
     return redirect(url_for('admin'))
 
-if __name__ == '__main__':
-    app.run(debug=True)
+# Обработчик загрузки дополнительных инициатив
+@app.route('/load_more_initiatives')
+def load_more_initiatives():
+    page = request.args.get('page', 1, type=int)
+    offset = (page - 1) * 20
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # Получаем инициативы для текущей страницы
+    cur.execute("SELECT * FROM initiative ORDER BY date_created DESC LIMIT 20 OFFSET %s", (offset,))
+    initiatives = cur.fetchall()
+
+    # Для каждой инициативы получаем количество лайков и дизлайков
+    initiative_likes = {}
+    initiative_dislikes = {}
+    for initiative in initiatives:
+        initiative_id = initiative[0]
+
+        # Подсчитываем количество лайков
+        cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = %s AND vote_value = 1", (initiative_id,))
+        likes = cur.fetchone()[0]
+
+        # Подсчитываем количество дизлайков
+        cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = %s AND vote_value = -1", (initiative_id,))
+        dislikes = cur.fetchone()[0]
+
+        initiative_likes[initiative_id] = likes
+        initiative_dislikes[initiative_id] = dislikes
+
+    # Получаем общее количество инициатив для пагинации
+    cur.execute("SELECT COUNT(*) FROM initiative")
+    total_initiatives = cur.fetchone()[0]
+
+    cur.close()
+    conn.close()
+
+    return jsonify({
+        'initiatives': [{
+            'id': initiative[0],
+            'title': initiative[1],
+            'content': initiative[2],
+            'date_created': initiative[3],
+            'likes': initiative_likes[initiative[0]],
+            'dislikes': initiative_dislikes[initiative[0]]
+        } for initiative in initiatives],
+        'total_initiatives': total_initiatives
+    })
+
+
+
+
+
 
 
 
