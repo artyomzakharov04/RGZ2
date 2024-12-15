@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<h2>Initiatives</h2>
+
+{% if 'user_id' not in session %}
+    <p style="color: red;">Чтобы голосовать, необходимо авторизоваться!</p>
+{% endif %}
+
+{% for initiative in initiatives %}
+    <div class="initiative">
+        <h3>{{ initiative[1] }}</h3> <!-- Title -->
+        <p>{{ initiative[2] }}</p> <!-- Content -->
+        <small>Created on {{ initiative[3] }}</small>
+
+        <!-- Voting buttons -->
+        {% if 'user_id' in session %}
+        <div>
+            <button class="vote-btn" data-initiative-id="{{ initiative[0] }}" data-vote-value="1">Like</button>
+            <button class="vote-btn" data-initiative-id="{{ initiative[0] }}" data-vote-value="-1">Dislike</button>
+        </div>
+        {% endif %}
+
+        <!-- Like and Dislike counters -->
+        <p>Likes: <span id="likes-{{ initiative[0] }}">{{ initiative_likes[initiative[0]] }}</span></p>
+        <p>Dislikes: <span id="dislikes-{{ initiative[0] }}">{{ initiative_dislikes[initiative[0]] }}</span></p>
+    </div>
+{% endfor %}
+
+<a href="{{ url_for('index', page=request.args.get('page', 1, type=int) + 1) }}">Load more</a>
+
+<script>
+    document.querySelectorAll('.vote-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const initiativeId = this.getAttribute('data-initiative-id');
+            const voteValue = this.getAttribute('data-vote-value');
+            
+            fetch('/vote', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    initiative_id: initiativeId,
+                    vote_value: voteValue
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('likes-' + initiativeId).innerText = data.likes;
+                document.getElementById('dislikes-' + initiativeId).innerText = data.dislikes;
+            });
+        });
+    });
+</script>
+
+{% endblock %}
+
+
+
+
+
+
+
+
+
