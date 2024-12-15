@@ -10,7 +10,7 @@
 {% endif %}
 
 {% for initiative in initiatives %}
-    <div class="initiative">
+    <div class="initiative" id="initiative-{{ initiative[0] }}">
         <h3>{{ initiative[1] }}</h3> <!-- Title -->
         <p>{{ initiative[2] }}</p> <!-- Content -->
         <small>Created on {{ initiative[3] }}</small>
@@ -29,39 +29,73 @@
     </div>
 {% endfor %}
 
-<a href="{{ url_for('index', page=request.args.get('page', 1, type=int) + 1) }}">Load more</a>
+{% if initiatives|length < total_initiatives %}
+    <button id="load-more-btn" data-page="2">Load more</button>
+{% endif %}
 
 <script>
-    document.querySelectorAll('.vote-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            const initiativeId = this.getAttribute('data-initiative-id');
-            const voteValue = this.getAttribute('data-vote-value');
-            
+    document.getElementById('load-more-btn')?.addEventListener('click', function() {
+        const page = this.getAttribute('data-page');
+        
+        fetch(`/load_more_initiatives?page=${page}`)
+        .then(response => response.json())
+        .then(data => {
+            const initiativesContainer = document.querySelector('main');
+            data.initiatives.forEach((initiative) => {
+                const initiativeElement = document.createElement('div');
+                initiativeElement.classList.add('initiative');
+                initiativeElement.id = `initiative-${initiative.id}`;
+                initiativeElement.innerHTML = `
+                    <h3>${initiative.title}</h3>
+                    <p>${initiative.content}</p>
+                    <small>Created on ${initiative.date_created}</small>
+                    <div>
+                        <button class="vote-btn" data-initiative-id="${initiative.id}" data-vote-value="1">Like</button>
+                        <button class="vote-btn" data-initiative-id="${initiative.id}" data-vote-value="-1">Dislike</button>
+                    </div>
+                    <p>Likes: <span id="likes-${initiative.id}">${initiative.likes}</span></p>
+                    <p>Dislikes: <span id="dislikes-${initiative.id}">${initiative.dislikes}</span></p>
+                `;
+                initiativesContainer.appendChild(initiativeElement);
+            });
+
+            // Update the page number for next request
+            this.setAttribute('data-page', parseInt(page) + 1);
+
+            // If no more initiatives, remove the "Load more" button
+            if (data.initiatives.length + (page - 1) * 20 >= data.total_initiatives) {
+                this.style.display = 'none';
+            }
+        })
+        .catch((error) => {
+            console.error('Error loading more initiatives:', error);
+        });
+    });
+
+    // Обработчик голосования
+    document.addEventListener('click', function(event) {
+        if (event.target.classList.contains('vote-btn')) {
+            const initiativeId = event.target.getAttribute('data-initiative-id');
+            const voteValue = event.target.getAttribute('data-vote-value');
+
             fetch('/vote', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    initiative_id: initiativeId,
-                    vote_value: voteValue
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ initiative_id: initiativeId, vote_value: parseInt(voteValue) })
             })
             .then(response => response.json())
             .then(data => {
-                document.getElementById('likes-' + initiativeId).innerText = data.likes;
-                document.getElementById('dislikes-' + initiativeId).innerText = data.dislikes;
+                // Обновляем счётчики лайков и дизлайков
+                document.getElementById(`likes-${initiativeId}`).textContent = data.likes;
+                document.getElementById(`dislikes-${initiativeId}`).textContent = data.dislikes;
+            })
+            .catch(error => {
+                console.error('Error while voting:', error);
             });
-        });
+        }
     });
 </script>
-
 {% endblock %}
-
-
-
-
-
 
 
 
