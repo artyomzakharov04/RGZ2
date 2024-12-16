@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
 
-{% block title %}Home{% endblock %}
+{% block title %}Главная страница{% endblock %}
 
 {% block content %}
-<h2>Initiatives</h2>
+<h2>Инициативы</h2>
 
 {% if 'user_id' not in session %}
     <p style="color: red;">Чтобы голосовать, необходимо авторизоваться!</p>
@@ -11,26 +11,26 @@
 
 {% for initiative in initiatives %}
     <div class="initiative" id="initiative-{{ initiative[0] }}">
-        <h3>{{ initiative[1] }}</h3> <!-- Title -->
-        <p>{{ initiative[2] }}</p> <!-- Content -->
+        <h3>{{ initiative[1] }}</h3> 
+        <p>{{ initiative[2] }}</p> 
         <small>Created on {{ initiative[3] }}</small>
 
-        <!-- Voting buttons -->
+        
         {% if 'user_id' in session %}
         <div>
-            <button class="vote-btn" data-initiative-id="{{ initiative[0] }}" data-vote-value="1">Like</button>
-            <button class="vote-btn" data-initiative-id="{{ initiative[0] }}" data-vote-value="-1">Dislike</button>
+            <button class="vote-btn" data-initiative-id="{{ initiative[0] }}" data-vote-value="1">Нравится</button>
+            <button class="vote-btn" data-initiative-id="{{ initiative[0] }}" data-vote-value="-1">Не нравится</button>
         </div>
         {% endif %}
 
-        <!-- Like and Dislike counters -->
-        <p>Likes: <span id="likes-{{ initiative[0] }}">{{ initiative_likes[initiative[0]] }}</span></p>
-        <p>Dislikes: <span id="dislikes-{{ initiative[0] }}">{{ initiative_dislikes[initiative[0]] }}</span></p>
+        
+        <p>Нравится: <span id="likes-{{ initiative[0] }}">{{ initiative_likes[initiative[0]] }}</span></p>
+        <p>Не нравится: <span id="dislikes-{{ initiative[0] }}">{{ initiative_dislikes[initiative[0]] }}</span></p>
     </div>
 {% endfor %}
 
 {% if initiatives|length < total_initiatives %}
-    <button id="load-more-btn" data-page="2">Load more</button>
+    <button id="load-more-btn" data-page="2">Загрузить еще</button>
 {% endif %}
 
 <script>
@@ -59,10 +59,10 @@
                 initiativesContainer.appendChild(initiativeElement);
             });
 
-            // Update the page number for next request
+            
             this.setAttribute('data-page', parseInt(page) + 1);
 
-            // If no more initiatives, remove the "Load more" button
+            
             if (data.initiatives.length + (page - 1) * 20 >= data.total_initiatives) {
                 this.style.display = 'none';
             }

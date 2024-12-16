@@ -1,21 +1,21 @@
 {% extends 'base.html' %}
 
-{% block title %}Register{% endblock %}
+{% block title %}Регистрация{% endblock %}
 
 {% block content %}
-<h2>Register</h2>
+<h2>Регистрация</h2>
 
 <form action="{{ url_for('register') }}" method="post">
-    <label for="username">Username</label>
+    <label for="username">Имя</label>
     <input type="text" id="username" name="username" required>
     
-    <label for="password">Password</label>
+    <label for="password">Пароль</label>
     <input type="password" id="password" name="password" required>
     
-    <button type="submit">Register</button>
+    <button type="submit">Зарегистрироваться</button>
 </form>
 
-<p>Already have an account? <a href="{{ url_for('login') }}">Login here</a>.</p>
+<p>У вас уже есть аккаунт? <a href="{{ url_for('login') }}">Войти здесь</a>.</p>
 {% endblock %}
 
 

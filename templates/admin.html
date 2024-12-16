@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
 
-{% block title %}Admin Panel{% endblock %}
+{% block title %}Панель Администратора{% endblock %}
 
 {% block content %}
-<h2>Admin Panel</h2>
+<h2>Панель Администратора</h2>
 
 <h3>Users</h3>
 <table>
@@ -17,13 +17,13 @@
         <td>{{ user[0] }}</td>
         <td>{{ user[1] }}</td>
         <td>
-            <a href="{{ url_for('delete_user', user_id=user[0]) }}">Delete</a>
+            <a href="{{ url_for('delete_user', user_id=user[0]) }}">Удалить</a>
         </td>
     </tr>
     {% endfor %}
 </table>
 
-<h3>Initiatives</h3>
+<h3>Инициативы</h3>
 <table>
     <tr>
         <th>ID</th>
@@ -37,7 +37,7 @@
         <td>{{ initiative[1] }}</td>
         <td>{{ initiative[2] }}</td>
         <td>
-            <a href="{{ url_for('delete_admin_initiative', initiative_id=initiative[0]) }}">Delete</a>
+            <a href="{{ url_for('delete_admin_initiative', initiative_id=initiative[0]) }}">Удалить</a>
         </td>
     </tr>
     {% endfor %}
