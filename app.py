@@ -2,21 +2,28 @@ import psycopg2
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
-import datetime
+import os
 
 app = Flask(__name__)
-import os
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your_default_secret_key')
 
+# Функция для получения соединения с базой данных
 def get_db_connection():
-    return psycopg2.connect(
-        database=os.getenv('DB_NAME', 'rgz_zaxarov22'),
-        user=os.getenv('DB_USER', 'rgz_zaxarov22'),
-        password=os.getenv('DB_PASS', '12345'),
-        host=os.getenv('DB_HOST', '127.0.0.1')
-    )
+    try:
+        conn = psycopg2.connect(
+            database=os.getenv('DB_NAME', 'rgz_zaxarov22'),
+            user=os.getenv('DB_USER', 'rgz_zaxarov22'),
+            password=os.getenv('DB_PASS', '12345'),
+            host=os.getenv('DB_HOST', '127.0.0.1'),
+            port=os.getenv('DB_PORT', '5432')  # добавляем параметр порта
+        )
+        return conn
+    except psycopg2.OperationalError as e:
+        print(f"Ошибка подключения к базе данных: {e}")
+        flash('Не удается подключиться к базе данных. Проверьте настройки.', 'error')
+        return None
 
-# Helper functions
+# Helper функции
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -40,6 +47,8 @@ def login():
             return redirect(url_for('login'))
 
         conn = get_db_connection()
+        if conn is None:
+            return redirect(url_for('login'))  # если не удалось подключиться, вернемся на страницу входа
         cur = conn.cursor()
         cur.execute("SELECT * FROM users WHERE username = %s", (username,))
         user = cur.fetchone()
@@ -64,6 +73,8 @@ def index():
     page = request.args.get('page', 1, type=int)
     offset = (page - 1) * 20
     conn = get_db_connection()
+    if conn is None:
+        return render_template('error.html', message="Не удается подключиться к базе данных.")
     cur = conn.cursor()
     cur.execute("SELECT * FROM initiative ORDER BY date_created DESC LIMIT 20 OFFSET %s", (offset,))
     initiatives = cur.fetchall()
@@ -110,6 +121,8 @@ def register():
         password_hash = generate_password_hash(password)
 
         conn = get_db_connection()
+        if conn is None:
+            return redirect(url_for('register'))  # если не удалось подключиться, вернемся на страницу регистрации
         cur = conn.cursor()
         cur.execute("SELECT * FROM users WHERE username = %s", (username,))
         if cur.fetchone():
@@ -137,6 +150,8 @@ def create_initiative():
         user_id = session['user_id']
 
         conn = get_db_connection()
+        if conn is None:
+            return redirect(url_for('create_initiative'))  # если не удалось подключиться, вернемся на страницу создания инициативы
         cur = conn.cursor()
         cur.execute("INSERT INTO initiative (title, content, user_id) VALUES (%s, %s, %s)", (title, content, user_id))
         conn.commit()
@@ -149,6 +164,8 @@ def create_initiative():
 @login_required
 def delete_initiative(initiative_id):
     conn = get_db_connection()
+    if conn is None:
+        return redirect(url_for('index'))  # если не удалось подключиться, возвращаемся на главную страницу
     cur = conn.cursor()
     cur.execute("SELECT user_id FROM initiative WHERE id = %s", (initiative_id,))
     initiative = cur.fetchone()
@@ -171,6 +188,9 @@ def vote():
     user_id = session['user_id']
 
     conn = get_db_connection()
+    if conn is None:
+        return jsonify({'error': 'Не удалось подключиться к базе данных'}), 500
+
     cur = conn.cursor()
     cur.execute("SELECT * FROM vote WHERE user_id = %s AND initiative_id = %s", (user_id, initiative_id))
     existing_vote = cur.fetchone()
@@ -207,6 +227,8 @@ def admin():
         return redirect(url_for('index'))
 
     conn = get_db_connection()
+    if conn is None:
+        return redirect(url_for('index'))  # если не удалось подключиться, возвращаемся на главную страницу
     cur = conn.cursor()
     cur.execute("SELECT * FROM users")
     users = cur.fetchall()
@@ -224,6 +246,8 @@ def delete_user(user_id):
         return redirect(url_for('index'))
 
     conn = get_db_connection()
+    if conn is None:
+        return redirect(url_for('admin'))  # если не удалось подключиться, возвращаемся на страницу администрирования
     cur = conn.cursor()
     cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
     conn.commit()
@@ -239,6 +263,8 @@ def delete_admin_initiative(initiative_id):
         return redirect(url_for('index'))
 
     conn = get_db_connection()
+    if conn is None:
+        return redirect(url_for('admin'))  # если не удалось подключиться, возвращаемся на страницу администрирования
     cur = conn.cursor()
     cur.execute("DELETE FROM initiative WHERE id = %s", (initiative_id,))
     conn.commit()
@@ -253,6 +279,8 @@ def load_more_initiatives():
     offset = (page - 1) * 20
 
     conn = get_db_connection()
+    if conn is None:
+        return jsonify({'error': 'Не удалось подключиться к базе данных'}), 500
     cur = conn.cursor()
 
     # Получаем инициативы для текущей страницы
@@ -294,6 +322,7 @@ def load_more_initiatives():
         } for initiative in initiatives],
         'total_initiatives': total_initiatives
     })
+
 
 
 
