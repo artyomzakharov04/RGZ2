@@ -88,7 +88,9 @@ def index():
     if conn is None:
         return render_template('error.html', message="Не удается подключиться к базе данных.")
     cur = conn.cursor()
-    cur.execute("SELECT * FROM initiative ORDER BY date_created DESC LIMIT 20 OFFSET %s", (offset,))
+    
+    # Правильный запрос для SQLite
+    cur.execute("SELECT * FROM initiative ORDER BY date_created DESC LIMIT 20 OFFSET ?", (offset,))
     initiatives = cur.fetchall()
 
     # Для каждой инициативы получаем количество лайков и дизлайков
@@ -98,12 +100,12 @@ def index():
         initiative_id = initiative['id']
         
         # Подсчитываем количество лайков
-        cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = %s AND vote_value = 1", (initiative_id,))
+        cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = ? AND vote_value = 1", (initiative_id,))
         likes_result = cur.fetchone()
         likes = likes_result['count'] if likes_result else 0
         
         # Подсчитываем количество дизлайков
-        cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = %s AND vote_value = -1", (initiative_id,))
+        cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = ? AND vote_value = -1", (initiative_id,))
         dislikes_result = cur.fetchone()
         dislikes = dislikes_result['count'] if dislikes_result else 0
         
@@ -118,6 +120,7 @@ def index():
     cur.close()
     conn.close()
     return render_template('index.html', initiatives=initiatives, initiative_likes=initiative_likes, initiative_dislikes=initiative_dislikes, total_initiatives=total_initiatives)
+
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
