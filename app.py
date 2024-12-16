@@ -13,7 +13,7 @@ def get_db_connection():
         database=os.getenv('DB_NAME', 'rgz_zaxarov22'),
         user=os.getenv('DB_USER', 'rgz_zaxarov22'),
         password=os.getenv('DB_PASS', '12345'),
-        host=os.getenv('DB_HOST', 'localhost')
+        host=os.getenv('DB_HOST', '127.0.0.1')
     )
 
 # Helper functions
