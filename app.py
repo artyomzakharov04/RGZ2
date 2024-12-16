@@ -62,7 +62,7 @@ def login():
         if conn is None:
             return redirect(url_for('login'))  # если не удалось подключиться, вернемся на страницу входа
         cur = conn.cursor()
-        cur.execute("SELECT * FROM users WHERE username = %s", (username,))
+        cur.execute("SELECT * FROM users WHERE username = ?", (username,))
         user = cur.fetchone()
         cur.close()
         conn.close()
@@ -88,7 +88,7 @@ def index():
     if conn is None:
         return render_template('error.html', message="Не удается подключиться к базе данных.")
     cur = conn.cursor()
-    cur.execute("SELECT * FROM initiative ORDER BY date_created DESC LIMIT 20 OFFSET %s", (offset,))
+    cur.execute("SELECT * FROM initiative ORDER BY date_created DESC LIMIT 20 OFFSET ?", (offset,))
     initiatives = cur.fetchall()
 
     # Для каждой инициативы получаем количество лайков и дизлайков
@@ -98,12 +98,12 @@ def index():
         initiative_id = initiative['id']
         
         # Подсчитываем количество лайков
-        cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = %s AND vote_value = 1", (initiative_id,))
+        cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = ? AND vote_value = 1", (initiative_id,))
         likes_result = cur.fetchone()
         likes = likes_result['count'] if likes_result else 0
         
         # Подсчитываем количество дизлайков
-        cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = %s AND vote_value = -1", (initiative_id,))
+        cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = ? AND vote_value = -1", (initiative_id,))
         dislikes_result = cur.fetchone()
         dislikes = dislikes_result['count'] if dislikes_result else 0
         
@@ -139,12 +139,12 @@ def register():
         if conn is None:
             return redirect(url_for('register'))  # если не удалось подключиться, вернемся на страницу регистрации
         cur = conn.cursor()
-        cur.execute("SELECT * FROM users WHERE username = %s", (username,))
+        cur.execute("SELECT * FROM users WHERE username = ?", (username,))
         if cur.fetchone():
             flash('Введены неверные данные!', 'error')
             return redirect(url_for('register'))
 
-        cur.execute("INSERT INTO users (username, password) VALUES (%s, %s)", (username, password_hash))
+        cur.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password_hash))
         conn.commit()
         cur.close()
         conn.close()
@@ -169,7 +169,7 @@ def create_initiative():
         if conn is None:
             return redirect(url_for('create_initiative'))  # если не удалось подключиться, вернемся на страницу создания инициативы
         cur = conn.cursor()
-        cur.execute("INSERT INTO initiative (title, content, user_id) VALUES (%s, %s, %s)", (title, content, user_id))
+        cur.execute("INSERT INTO initiative (title, content, user_id) VALUES (?, ?, ?)", (title, content, user_id))
         conn.commit()
         cur.close()
         conn.close()
@@ -183,13 +183,13 @@ def delete_initiative(initiative_id):
     if conn is None:
         return redirect(url_for('index'))  # если не удалось подключиться, возвращаемся на главную страницу
     cur = conn.cursor()
-    cur.execute("SELECT user_id FROM initiative WHERE id = %s", (initiative_id,))
+    cur.execute("SELECT user_id FROM initiative WHERE id = ?", (initiative_id,))
     initiative = cur.fetchone()
     if initiative and initiative['user_id'] != session['user_id']:
         flash('Введены неверные данные!', 'error')
         return redirect(url_for('index'))
 
-    cur.execute("DELETE FROM initiative WHERE id = %s", (initiative_id,))
+    cur.execute("DELETE FROM initiative WHERE id = ?", (initiative_id,))
     conn.commit()
     cur.close()
     conn.close()
@@ -208,28 +208,28 @@ def vote():
         return jsonify({'error': 'Не удалось подключиться к базе данных'}), 500
 
     cur = conn.cursor()
-    cur.execute("SELECT * FROM vote WHERE user_id = %s AND initiative_id = %s", (user_id, initiative_id))
+    cur.execute("SELECT * FROM vote WHERE user_id = ? AND initiative_id = ?", (user_id, initiative_id))
     existing_vote = cur.fetchone()
 
     if existing_vote:
-        cur.execute("UPDATE vote SET vote_value = %s WHERE id = %s", (vote_value, existing_vote['id']))
+        cur.execute("UPDATE vote SET vote_value = ? WHERE id = ?", (vote_value, existing_vote['id']))
     else:
-        cur.execute("INSERT INTO vote (user_id, initiative_id, vote_value) VALUES (%s, %s, %s)", (user_id, initiative_id, vote_value))
+        cur.execute("INSERT INTO vote (user_id, initiative_id, vote_value) VALUES (?, ?, ?)", (user_id, initiative_id, vote_value))
 
     conn.commit()
 
     # Обновляем количество лайков и дизлайков
-    cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = %s AND vote_value = 1", (initiative_id,))
+    cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = ? AND vote_value = 1", (initiative_id,))
     likes_result = cur.fetchone()
     likes = likes_result['count'] if likes_result else 0
     
-    cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = %s AND vote_value = -1", (initiative_id,))
+    cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = ? AND vote_value = -1", (initiative_id,))
     dislikes_result = cur.fetchone()
     dislikes = dislikes_result['count'] if dislikes_result else 0
 
     # Если количество дизлайков >= 10, удаляем инициативу с сайта
     if dislikes >= 10:
-        cur.execute("DELETE FROM initiative WHERE id = %s", (initiative_id,))
+        cur.execute("DELETE FROM initiative WHERE id = ?", (initiative_id,))
         conn.commit()
 
     cur.close()
@@ -269,7 +269,7 @@ def delete_user(user_id):
     if conn is None:
         return redirect(url_for('admin'))  # если не удалось подключиться, возвращаемся на страницу администрирования
     cur = conn.cursor()
-    cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
+    cur.execute("DELETE FROM users WHERE id = ?", (user_id,))
     conn.commit()
     cur.close()
     conn.close()
@@ -286,7 +286,7 @@ def delete_admin_initiative(initiative_id):
     if conn is None:
         return redirect(url_for('admin'))  # если не удалось подключиться, возвращаемся на страницу администрирования
     cur = conn.cursor()
-    cur.execute("DELETE FROM initiative WHERE id = %s", (initiative_id,))
+    cur.execute("DELETE FROM initiative WHERE id = ?", (initiative_id,))
     conn.commit()
     cur.close()
     conn.close()
@@ -304,7 +304,7 @@ def load_more_initiatives():
     cur = conn.cursor()
 
     # Получаем инициативы для текущей страницы
-    cur.execute("SELECT * FROM initiative ORDER BY date_created DESC LIMIT 20 OFFSET %s", (offset,))
+    cur.execute("SELECT * FROM initiative ORDER BY date_created DESC LIMIT 20 OFFSET ?", (offset,))
     initiatives = cur.fetchall()
 
     # Для каждой инициативы получаем количество лайков и дизлайков
@@ -314,12 +314,12 @@ def load_more_initiatives():
         initiative_id = initiative['id']
 
         # Подсчитываем количество лайков
-        cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = %s AND vote_value = 1", (initiative_id,))
+        cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = ? AND vote_value = 1", (initiative_id,))
         likes_result = cur.fetchone()
         likes = likes_result['count'] if likes_result else 0
 
         # Подсчитываем количество дизлайков
-        cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = %s AND vote_value = -1", (initiative_id,))
+        cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = ? AND vote_value = -1", (initiative_id,))
         dislikes_result = cur.fetchone()
         dislikes = dislikes_result['count'] if dislikes_result else 0
 
@@ -345,4 +345,5 @@ def load_more_initiatives():
         } for initiative in initiatives],
         'total_initiatives': total_initiatives
     })
+
 
