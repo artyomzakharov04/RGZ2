@@ -5,10 +5,16 @@ from functools import wraps
 import datetime
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your_secret_key'
+import os
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your_default_secret_key')
 
 def get_db_connection():
-    return psycopg2.connect(database="rgz_zaxarov22", user="rgz_zaxarov22", password="12345", host="localhost")
+    return psycopg2.connect(
+        database=os.getenv('DB_NAME', 'rgz_zaxarov22'),
+        user=os.getenv('DB_USER', 'rgz_zaxarov22'),
+        password=os.getenv('DB_PASS', '12345'),
+        host=os.getenv('DB_HOST', 'localhost')
+    )
 
 # Helper functions
 def login_required(f):
