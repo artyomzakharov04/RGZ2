@@ -322,23 +322,3 @@ def load_more_initiatives():
         } for initiative in initiatives],
         'total_initiatives': total_initiatives
     })
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
