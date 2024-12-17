@@ -264,7 +264,13 @@ def vote():
 @app.route('/admin', methods=['GET', 'POST'])
 @login_required
 def admin():
-    if session['user_id'] != 'admin':
+    conn, cur = db_connect()
+    cur.execute("SELECT role FROM users WHERE id = ?", (session['user_id'],))
+    user_role = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if user_role is None or user_role['role'] != 'admin':
         flash('У вас нет прав доступа к этому разделу!', 'error')
         return redirect(url_for('index'))
 
@@ -281,7 +287,13 @@ def admin():
 @app.route('/admin/delete_user/<int:user_id>')
 @login_required
 def delete_user(user_id):
-    if session['user_id'] != 'admin':
+    conn, cur = db_connect()
+    cur.execute("SELECT role FROM users WHERE id = ?", (session['user_id'],))
+    user_role = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if user_role is None or user_role['role'] != 'admin':
         flash('У вас нет прав доступа к этому разделу!', 'error')
         return redirect(url_for('index'))
 
@@ -298,7 +310,13 @@ def delete_user(user_id):
 @app.route('/admin/delete_initiative/<int:initiative_id>')
 @login_required
 def delete_admin_initiative(initiative_id):
-    if session['user_id'] != 'admin':
+    conn, cur = db_connect()
+    cur.execute("SELECT role FROM users WHERE id = ?", (session['user_id'],))
+    user_role = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if user_role is None or user_role['role'] != 'admin':
         flash('У вас нет прав доступа к этому разделу!', 'error')
         return redirect(url_for('index'))
 
