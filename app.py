@@ -12,29 +12,23 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'секретно-сек
 app.config['DB_TYPE'] = os.getenv('DB_TYPE', 'postgres')  # Определяем тип базы данных (Postgres или SQLite)
 
 # Функция для получения соединения с базой данных (PostgreSQL или SQLite)
-def get_db_connection():
-    if current_app.config['DB_TYPE'] == 'postgres':
-        try:
-            # Для PostgreSQL
-            conn = psycopg2.connect(
+def db_connect():
+    if app.config['DB_TYPE'] == 'postgres':
+        conn = psycopg2.connect(
                 host='127.0.0.1',
                 database='rgz_zaxarov22',
                 user='rgz_zaxarov22',
                 password='12345',
                 cursor_factory=RealDictCursor  # Используем RealDictCursor для PostgreSQL
             )
-            return conn
-        except psycopg2.Error as e:
-            print(f"Ошибка подключения к базе данных: {e}")
-            flash('Не удается подключиться к базе данных. Проверьте настройки.', 'error')
-            return None
+        cur = conn.cursor(cursor_factory=RealDictCursor)
     else:
-        # Для SQLite
-        db_path = os.path.join(os.path.dirname(__file__), 'database.db')
+        dir_path = path.dirname(path.realpath(__file__))
+        db_path = path.join(dir_path, "database.db")
         conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row  # Используем Row factory для SQLite, аналогично RealDictCursor
-        return conn
-
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+    return conn, cur
 # Функции для авторизации и маршруты приложения
 def login_required(f):
     @wraps(f)  # Используем импортированную функцию wraps
@@ -58,11 +52,11 @@ def login():
             flash('Введены неверные логин и/или пароль!', 'error')
             return redirect(url_for('login'))
 
-        conn = get_db_connection()
-        if conn is None:
-            return redirect(url_for('login'))  # если не удалось подключиться, вернемся на страницу входа
-        cur = conn.cursor()
-        cur.execute("SELECT * FROM users WHERE username = %s", (username,))
+        conn, cur = db_connect()
+        if current_app.config['DB_TYPE'] == 'postgres':
+            cur.execute("SELECT * FROM users WHERE username = %s", (username,))
+        else:
+            cur.execute("SELECT * FROM users WHERE username = ?", (username,))
         user = cur.fetchone()
         cur.close()
         conn.close()
@@ -84,13 +78,13 @@ def logout():
 def index():
     page = request.args.get('page', 1, type=int)
     offset = (page - 1) * 20
-    conn = get_db_connection()
-    if conn is None:
-        return render_template('error.html', message="Не удается подключиться к базе данных.")
-    cur = conn.cursor()
+    conn, cur = db_connect()
     
     # Правильный запрос для SQLite
-    cur.execute("SELECT * FROM initiative ORDER BY date_created DESC LIMIT 20 OFFSET ?", (offset,))
+    if current_app.config['DB_TYPE'] == 'postgres':
+        cur.execute("SELECT * FROM initiative ORDER BY date_created DESC LIMIT 20 OFFSET %s", (offset,))
+    else:
+        cur.execute("SELECT * FROM initiative ORDER BY date_created DESC LIMIT 20 OFFSET ?", (offset,))
     initiatives = cur.fetchall()
 
     # Для каждой инициативы получаем количество лайков и дизлайков
@@ -100,12 +94,18 @@ def index():
         initiative_id = initiative['id']
         
         # Подсчитываем количество лайков
-        cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = ? AND vote_value = 1", (initiative_id,))
+        if current_app.config['DB_TYPE'] == 'postgres':
+            cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = %s AND vote_value = 1", (initiative_id,))
+        else:
+            cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = ? AND vote_value = 1", (initiative_id,))
         likes_result = cur.fetchone()
         likes = likes_result['count'] if likes_result else 0
         
         # Подсчитываем количество дизлайков
-        cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = ? AND vote_value = -1", (initiative_id,))
+        if current_app.config['DB_TYPE'] == 'postgres':
+            cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = %s AND vote_value = -1", (initiative_id,))
+        else:
+            cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = ? AND vote_value = -1", (initiative_id,))
         dislikes_result = cur.fetchone()
         dislikes = dislikes_result['count'] if dislikes_result else 0
         
@@ -138,16 +138,20 @@ def register():
 
         password_hash = generate_password_hash(password)
 
-        conn = get_db_connection()
-        if conn is None:
-            return redirect(url_for('register'))  # если не удалось подключиться, вернемся на страницу регистрации
-        cur = conn.cursor()
-        cur.execute("SELECT * FROM users WHERE username = %s", (username,))
+        conn, cur = db_connect()
+        if current_app.config['DB_TYPE'] == 'postgres':
+            cur.execute("SELECT * FROM users WHERE username = %s", (username,))
+        else:
+            cur.execute("SELECT * FROM users WHERE username = ?", (username,))
         if cur.fetchone():
             flash('Введены неверные данные!', 'error')
             return redirect(url_for('register'))
 
-        cur.execute("INSERT INTO users (username, password) VALUES (%s, %s)", (username, password_hash))
+
+        if current_app.config['DB_TYPE'] == 'postgres':
+            cur.execute("INSERT INTO users (username, password) VALUES (%s, %s)", (username, password_hash))
+        else:
+            cur.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password_hash))
         conn.commit()
         cur.close()
         conn.close()
@@ -168,11 +172,11 @@ def create_initiative():
 
         user_id = session['user_id']
 
-        conn = get_db_connection()
-        if conn is None:
-            return redirect(url_for('create_initiative'))  # если не удалось подключиться, вернемся на страницу создания инициативы
-        cur = conn.cursor()
-        cur.execute("INSERT INTO initiative (title, content, user_id) VALUES (%s, %s, %s)", (title, content, user_id))
+        conn, cur = db_connect()
+        if current_app.config['DB_TYPE'] == 'postgres':
+            cur.execute("INSERT INTO initiative (title, content, user_id) VALUES (%s, %s, %s)", (title, content, user_id))
+        else:
+            cur.execute("INSERT INTO initiative (title, content, user_id) VALUES (?, ?, ?)", (title, content, user_id))
         conn.commit()
         cur.close()
         conn.close()
@@ -182,17 +186,19 @@ def create_initiative():
 @app.route('/delete/<int:initiative_id>')
 @login_required
 def delete_initiative(initiative_id):
-    conn = get_db_connection()
-    if conn is None:
-        return redirect(url_for('index'))  # если не удалось подключиться, возвращаемся на главную страницу
-    cur = conn.cursor()
-    cur.execute("SELECT user_id FROM initiative WHERE id = %s", (initiative_id,))
+    conn, cur = db_connect()
+    if current_app.config['DB_TYPE'] == 'postgres':
+        cur.execute("SELECT user_id FROM initiative WHERE id = %s", (initiative_id,))
+    else:
+        cur.execute("SELECT user_id FROM initiative WHERE id = ?", (initiative_id,))
     initiative = cur.fetchone()
     if initiative and initiative['user_id'] != session['user_id']:
         flash('Введены неверные данные!', 'error')
         return redirect(url_for('index'))
-
-    cur.execute("DELETE FROM initiative WHERE id = %s", (initiative_id,))
+    if current_app.config['DB_TYPE'] == 'postgres':
+        cur.execute("DELETE FROM initiative WHERE id = %s", (initiative_id,))
+    else:
+        cur.execute("DELETE FROM initiative WHERE id = ?", (initiative_id,))
     conn.commit()
     cur.close()
     conn.close()
@@ -205,34 +211,46 @@ def vote():
     initiative_id = data['initiative_id']
     vote_value = data['vote_value']
     user_id = session['user_id']
-
-    conn = get_db_connection()
-    if conn is None:
-        return jsonify({'error': 'Не удалось подключиться к базе данных'}), 500
-
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM vote WHERE user_id = %s AND initiative_id = %s", (user_id, initiative_id))
+    conn, cur = db_connect()
+    if current_app.config['DB_TYPE'] == 'postgres':
+        cur.execute("SELECT * FROM vote WHERE user_id = %s AND initiative_id = %s", (user_id, initiative_id))
+    else:
+        cur.execute("SELECT * FROM vote WHERE user_id = ? AND initiative_id = ?", (user_id, initiative_id))
     existing_vote = cur.fetchone()
 
     if existing_vote:
-        cur.execute("UPDATE vote SET vote_value = %s WHERE id = %s", (vote_value, existing_vote['id']))
+        if current_app.config['DB_TYPE'] == 'postgres':
+            cur.execute("UPDATE vote SET vote_value = %s WHERE id = %s", (vote_value, existing_vote['id']))
+        else:
+            cur.execute("UPDATE vote SET vote_value = ? WHERE id = ?", (vote_value, existing_vote['id']))
     else:
-        cur.execute("INSERT INTO vote (user_id, initiative_id, vote_value) VALUES (%s, %s, %s)", (user_id, initiative_id, vote_value))
+        if current_app.config['DB_TYPE'] == 'postgres':
+            cur.execute("INSERT INTO vote (user_id, initiative_id, vote_value) VALUES (%s, %s, %s)", (user_id, initiative_id, vote_value))
+        else:
+            cur.execute("INSERT INTO vote (user_id, initiative_id, vote_value) VALUES (?, ?, ?)", (user_id, initiative_id, vote_value))
 
     conn.commit()
 
     # Обновляем количество лайков и дизлайков
-    cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = %s AND vote_value = 1", (initiative_id,))
+    if current_app.config['DB_TYPE'] == 'postgres':
+        cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = %s AND vote_value = 1", (initiative_id,))
+    else:
+        cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = ? AND vote_value = 1", (initiative_id,))
     likes_result = cur.fetchone()
     likes = likes_result['count'] if likes_result else 0
-    
-    cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = %s AND vote_value = -1", (initiative_id,))
+    if current_app.config['DB_TYPE'] == 'postgres':
+        cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = %s AND vote_value = -1", (initiative_id,))
+    else:
+        cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = ? AND vote_value = -1", (initiative_id,))
     dislikes_result = cur.fetchone()
     dislikes = dislikes_result['count'] if dislikes_result else 0
 
     # Если количество дизлайков >= 10, удаляем инициативу с сайта
     if dislikes >= 10:
-        cur.execute("DELETE FROM initiative WHERE id = %s", (initiative_id,))
+        if current_app.config['DB_TYPE'] == 'postgres':
+            cur.execute("DELETE FROM initiative WHERE id = %s", (initiative_id,))
+        else:
+            cur.execute("DELETE FROM initiative WHERE id = ?", (initiative_id,))
         conn.commit()
 
     cur.close()
@@ -248,10 +266,7 @@ def admin():
         flash('У вас нет прав доступа к этому разделу!', 'error')
         return redirect(url_for('index'))
 
-    conn = get_db_connection()
-    if conn is None:
-        return redirect(url_for('index'))  # если не удалось подключиться, возвращаемся на страницу администрирования
-    cur = conn.cursor()
+    conn, cur = db_connect()
     cur.execute("SELECT * FROM users")
     users = cur.fetchall()
     cur.execute("SELECT * FROM initiative")
@@ -268,11 +283,11 @@ def delete_user(user_id):
         flash('У вас нет прав доступа к этому разделу!', 'error')
         return redirect(url_for('index'))
 
-    conn = get_db_connection()
-    if conn is None:
-        return redirect(url_for('admin'))  # если не удалось подключиться, возвращаемся на страницу администрирования
-    cur = conn.cursor()
-    cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
+    conn, cur = db_connect()
+    if current_app.config['DB_TYPE'] == 'postgres':
+        cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
+    else:
+        cur.execute("DELETE FROM users WHERE id = ?", (user_id,))
     conn.commit()
     cur.close()
     conn.close()
@@ -285,11 +300,11 @@ def delete_admin_initiative(initiative_id):
         flash('У вас нет прав доступа к этому разделу!', 'error')
         return redirect(url_for('index'))
 
-    conn = get_db_connection()
-    if conn is None:
-        return redirect(url_for('admin'))  # если не удалось подключиться, возвращаемся на страницу администрирования
-    cur = conn.cursor()
-    cur.execute("DELETE FROM initiative WHERE id = %s", (initiative_id,))
+    conn, cur = db_connect()
+    if current_app.config['DB_TYPE'] == 'postgres':
+        cur.execute("DELETE FROM initiative WHERE id = %s", (initiative_id,))
+    else:
+        cur.execute("DELETE FROM initiative WHERE id = ?", (initiative_id,))
     conn.commit()
     cur.close()
     conn.close()
@@ -301,22 +316,27 @@ def load_more_initiatives():
     page = request.args.get('page', 1, type=int)
     offset = (page - 1) * 20
 
-    conn = get_db_connection()
-    if conn is None:
-        return jsonify({'error': 'Не удалось подключиться к базе данных'}), 500
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM initiative ORDER BY date_created DESC LIMIT 20 OFFSET %s", (offset,))
+    conn, cur = db_connect()
+    if current_app.config['DB_TYPE'] == 'postgres':
+        cur.execute("SELECT * FROM initiative ORDER BY date_created DESC LIMIT 20 OFFSET %s", (offset,))
+    else:
+        cur.execute("SELECT * FROM initiative ORDER BY date_created DESC LIMIT 20 OFFSET ?", (offset,))
     initiatives = cur.fetchall()
 
     initiative_likes = {}
     initiative_dislikes = {}
     for initiative in initiatives:
         initiative_id = initiative['id']
-        cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = %s AND vote_value = 1", (initiative_id,))
+        if current_app.config['DB_TYPE'] == 'postgres':
+            cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = %s AND vote_value = 1", (initiative_id,))
+        else:
+            cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = ? AND vote_value = 1", (initiative_id,))
         likes_result = cur.fetchone()
         likes = likes_result['count'] if likes_result else 0
-        
-        cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = %s AND vote_value = -1", (initiative_id,))
+        if current_app.config['DB_TYPE'] == 'postgres':
+            cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = %s AND vote_value = -1", (initiative_id,))
+        else:
+            cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = ? AND vote_value = -1", (initiative_id,))
         dislikes_result = cur.fetchone()
         dislikes = dislikes_result['count'] if dislikes_result else 0
         
