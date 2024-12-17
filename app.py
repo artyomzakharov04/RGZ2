@@ -5,8 +5,10 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 from psycopg2.extras import RealDictCursor
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
+from dotenv import load_dotenv
+from os import path
 import sqlite3  # Импортируем sqlite3 для работы с SQLite
-
+load_dotenv()
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'секретно-секретный секрет')
 app.config['DB_TYPE'] = os.getenv('DB_TYPE', 'postgres')  # Определяем тип базы данных (Postgres или SQLite)
