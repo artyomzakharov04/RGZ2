@@ -101,7 +101,7 @@ def index():
         else:
             cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = ? AND vote_value = 1", (initiative_id,))
         likes_result = cur.fetchone()
-        likes = likes_result['count'] if likes_result else 0
+        likes = likes_result[0] if likes_result else 0
         
         # Подсчитываем количество дизлайков
         if current_app.config['DB_TYPE'] == 'postgres':
@@ -109,7 +109,7 @@ def index():
         else:
             cur.execute("SELECT COUNT(*) FROM vote WHERE initiative_id = ? AND vote_value = -1", (initiative_id,))
         dislikes_result = cur.fetchone()
-        dislikes = dislikes_result['count'] if dislikes_result else 0
+        dislikes = dislikes_result[0] if dislikes_result else 0
         
         initiative_likes[initiative_id] = likes
         initiative_dislikes[initiative_id] = dislikes
