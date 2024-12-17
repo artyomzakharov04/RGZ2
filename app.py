@@ -117,7 +117,7 @@ def index():
     # Получаем общее количество инициатив для пагинации
     cur.execute("SELECT COUNT(*) FROM initiative")
     total_initiatives_result = cur.fetchone()
-    total_initiatives = total_initiatives_result['count'] if total_initiatives_result else 0
+    total_initiatives = total_initiatives_result[0] if total_initiatives_result else 0
 
     cur.close()
     conn.close()
