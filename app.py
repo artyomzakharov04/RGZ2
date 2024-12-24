@@ -284,12 +284,16 @@ def admin():
     conn, cur = db_connect()
     if current_app.config['DB_TYPE'] == 'postgres':
         cur.execute("SELECT * FROM users")
+        users = cur.fetchall()
         cur.execute("SELECT * FROM initiative")
+        initiatives = cur.fetchall()
     else:
         cur.execute("SELECT * FROM users")
+        users = cur.fetchall()
         cur.execute("SELECT * FROM initiative")
-    users = cur.fetchall()
-    initiatives = cur.fetchall()
+        initiatives = cur.fetchall()
+    
+    
     cur.close()
     conn.close()
     return render_template('admin.html', users=users, initiatives=initiatives)
