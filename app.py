@@ -121,7 +121,18 @@ def index():
 
     cur.close()
     conn.close()
-    return render_template('index.html', initiatives=initiatives, initiative_likes=initiative_likes, initiative_dislikes=initiative_dislikes, total_initiatives=total_initiatives)
+
+
+
+    conn, cur = db_connect()
+    if current_app.config['DB_TYPE'] == 'postgres':
+        cur.execute("SELECT role FROM users WHERE id = %s", (session['user_id'],))
+    else:
+        cur.execute("SELECT role FROM users WHERE id = ?", (session['user_id'],))
+    user_role = cur.fetchone()
+    cur.close()
+    conn.close()
+    return render_template('index.html', initiatives=initiatives, initiative_likes=initiative_likes, initiative_dislikes=initiative_dislikes, total_initiatives=total_initiatives,user_role=user_role)
 
 
 @app.route('/register', methods=['GET', 'POST'])
