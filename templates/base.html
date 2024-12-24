@@ -14,7 +14,7 @@
             {% if 'user_id' in session %}
                 <a href="{{ url_for('create_initiative') }}">Создать Инициативу</a>
                 <a href="{{ url_for('logout') }}">Выйти</a>
-                {% if user_role == 'admin' %}  <!-- Проверяем роль -->
+                {% if session['user_id'] == 1 %}
                     <a href="{{ url_for('admin') }}">Админ</a>
                 {% endif %}
             {% else %}
@@ -31,3 +31,9 @@
     </footer>
 </body>
 </html>
+
+
+
+
+
+
