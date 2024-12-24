@@ -273,7 +273,7 @@ def admin():
     cur.close()
     conn.close()
 
-    if user_role is None or user_role['role'] != 'admin':
+    if user_role['role'] != 'admin':
         flash('У вас нет прав доступа к этому разделу!', 'error')
         return redirect(url_for('index'))
 
@@ -292,7 +292,7 @@ def admin():
 
 @app.route('/admin/delete_user/<int:user_id>')
 @login_required
-def delete_userr(user_id):
+def delete_user(user_id):
     conn, cur = db_connect()
     if current_app.config['DB_TYPE'] == 'postgres':
         cur.execute("SELECT role FROM users WHERE id = %s", (session['user_id'],))
