@@ -292,7 +292,7 @@ def admin():
 
 @app.route('/admin/delete_user/<int:user_id>')
 @login_required
-def delete_user(user_id):
+def delete_userr(user_id):
     conn, cur = db_connect()
     if current_app.config['DB_TYPE'] == 'postgres':
         cur.execute("SELECT role FROM users WHERE id = %s", (session['user_id'],))
