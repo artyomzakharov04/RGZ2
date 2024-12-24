@@ -5,7 +5,7 @@
 {% block content %}
 <h2>Панель Администратора</h2>
 
-<h3>Users</h3>
+<h3>Пользователи</h3>
 <table>
     <tr>
         <th>ID</th>
@@ -14,10 +14,10 @@
     </tr>
     {% for user in users %}
     <tr>
-        <td>{{ user[0] }}</td>
-        <td>{{ user[1] }}</td>
+        <td>{{ user.id }}</td>
+        <td>{{ user.username }}</td>
         <td>
-            <a href="{{ url_for('delete_user', user_id=user[0]) }}">Удалить</a>
+            <a href="{{ url_for('delete_user', user_id=user.id) }}">Удалить</a>
         </td>
     </tr>
     {% endfor %}
@@ -33,19 +33,13 @@
     </tr>
     {% for initiative in initiatives %}
     <tr>
-        <td>{{ initiative[0] }}</td>
-        <td>{{ initiative[1] }}</td>
-        <td>{{ initiative[2] }}</td>
+        <td>{{ initiative.id }}</td>
+        <td>{{ initiative.title }}</td>
+        <td>{{ initiative.content }}</td>
         <td>
-            <a href="{{ url_for('delete_admin_initiative', initiative_id=initiative[0]) }}">Удалить</a>
+            <a href="{{ url_for('delete_admin_initiative', initiative_id=initiative.id) }}">Удалить</a>
         </td>
     </tr>
     {% endfor %}
 </table>
 {% endblock %}
-
-
-
-
-
-

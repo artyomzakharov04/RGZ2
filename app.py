@@ -265,7 +265,10 @@ def vote():
 @login_required
 def admin():
     conn, cur = db_connect()
-    cur.execute("SELECT role FROM users WHERE id = ?", (session['user_id'],))
+    if current_app.config['DB_TYPE'] == 'postgres':
+        cur.execute("SELECT role FROM users WHERE id = %s", (session['user_id'],))
+    else:
+        cur.execute("SELECT role FROM users WHERE id = ?", (session['user_id'],))
     user_role = cur.fetchone()
     cur.close()
     conn.close()
@@ -275,13 +278,44 @@ def admin():
         return redirect(url_for('index'))
 
     conn, cur = db_connect()
-    cur.execute("SELECT * FROM users")
+    if current_app.config['DB_TYPE'] == 'postgres':
+        cur.execute("SELECT * FROM users")
+        cur.execute("SELECT * FROM initiative")
+    else:
+        cur.execute("SELECT * FROM users")
+        cur.execute("SELECT * FROM initiative")
     users = cur.fetchall()
-    cur.execute("SELECT * FROM initiative")
     initiatives = cur.fetchall()
     cur.close()
     conn.close()
     return render_template('admin.html', users=users, initiatives=initiatives)
+
+@app.route('/admin/delete_user/<int:user_id>')
+@login_required
+def delete_user(user_id):
+    conn, cur = db_connect()
+    if current_app.config['DB_TYPE'] == 'postgres':
+        cur.execute("SELECT role FROM users WHERE id = %s", (session['user_id'],))
+    else:
+        cur.execute("SELECT role FROM users WHERE id = ?", (session['user_id'],))
+    user_role = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if user_role is None or user_role['role'] != 'admin':
+        flash('У вас нет прав доступа к этому разделу!', 'error')
+        return redirect(url_for('index'))
+
+    conn, cur = db_connect()
+    if current_app.config['DB_TYPE'] == 'postgres':
+        cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
+    else:
+        cur.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    flash('Пользователь успешно удален!', 'success')
+    return redirect(url_for('admin'))
 
 # Удаление пользователя и инициативы
 @app.route('/admin/delete_user/<int:user_id>')
@@ -311,7 +345,10 @@ def delete_user(user_id):
 @login_required
 def delete_admin_initiative(initiative_id):
     conn, cur = db_connect()
-    cur.execute("SELECT role FROM users WHERE id = ?", (session['user_id'],))
+    if current_app.config['DB_TYPE'] == 'postgres':
+        cur.execute("SELECT role FROM users WHERE id = %s", (session['user_id'],))
+    else:
+        cur.execute("SELECT role FROM users WHERE id = ?", (session['user_id'],))
     user_role = cur.fetchone()
     cur.close()
     conn.close()
@@ -328,8 +365,8 @@ def delete_admin_initiative(initiative_id):
     conn.commit()
     cur.close()
     conn.close()
+    flash('Инициатива успешно удалена!', 'success')
     return redirect(url_for('admin'))
-
 # Обработчик загрузки дополнительных инициатив
 @app.route('/load_more_initiatives')
 def load_more_initiatives():
